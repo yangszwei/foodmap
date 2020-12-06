@@ -3,12 +3,12 @@
 
 ## Project setup
 
-```
-$ yarn install
+```shell
+make build
 ```
 
-```
-$ yarn start
+```shell
+./foodmap
 ```
 
 ## Contribute

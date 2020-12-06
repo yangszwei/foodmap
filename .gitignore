@@ -1,3 +1,4 @@
-node_modules
-.env
-.dist
+.idea
+/.env
+*.iml
+.DS_Store
