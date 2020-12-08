@@ -1,7 +1,9 @@
-package persistence
+package store
 
 import (
 	"foodmap/internal/entity/store"
+	"foodmap/internal/infra/object"
+	"foodmap/internal/infra/persistence"
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/bson/primitive"
 	"go.mongodb.org/mongo-driver/mongo"
@@ -10,11 +12,11 @@ import (
 	"time"
 )
 
-// NewStoreRepo create an instance of StoreRepo
-func NewStoreRepo(db *DB) (*StoreRepo, error) {
-	s := new(StoreRepo)
+// NewRepo create an instance of Repo
+func NewRepo(db *persistence.DB) (*Repo, error) {
+	s := new(Repo)
 	s.db = db
-	s.stores = db.db.Collection("stores")
+	s.stores = db.DB.Collection("stores")
 	index := mongo.IndexModel{ Keys:
 		bson.D{
 			bson.E{ Key: "name", Value: "text" },
@@ -25,62 +27,58 @@ func NewStoreRepo(db *DB) (*StoreRepo, error) {
 			bson.E{ Key: "menu.cat", Value: "text" },
 		},
 	}
-	_, err := s.stores.Indexes().CreateOne(s.db.ctx, index)
+	_, err := s.stores.Indexes().CreateOne(s.db.Ctx, index)
 	return s, err
 }
 
-// StoreRepo implement store.IStoreRepo
-type StoreRepo struct {
-	db *DB
+// Repo implement store.IStoreRepo
+type Repo struct {
+	db *persistence.DB
 	stores *mongo.Collection
 }
 
 // InsertOne insert a store record to database
-func (s StoreRepo) InsertOne(store store.Store) (primitive.ObjectID, error) {
+func (r Repo) InsertOne(store store.Store) (primitive.ObjectID, error) {
 	store.ID = primitive.NewObjectID()
 	t := time.Now()
 	store.CreatedAt = &t
 	store.UpdatedAt = &t
-	_, err := s.stores.InsertOne(s.db.ctx, store)
+	_, err := r.stores.InsertOne(r.db.Ctx, store)
 	return store.ID, err
 }
 
 // FindOneByID find a store record by ID
-func (s StoreRepo) FindOneByID(id primitive.ObjectID, fields bson.M) (store.Store, error) {
+func (r Repo) FindOneByID(id primitive.ObjectID, fields bson.M) (store.Store, error) {
 	var result store.Store
 	opt := options.FindOne()
 	if fields != nil {
 		opt = opt.SetProjection(fields)
 	}
-	err := s.stores.FindOne(s.db.ctx, bson.M{ "_id": id }, opt).Decode(&result)
+	err := r.stores.FindOne(r.db.Ctx, bson.M{ "_id": id }, opt).Decode(&result)
 	return result, err
 }
 
 // Find find a list of store records from database
-func (s StoreRepo) Find(query string, filter store.Store, fields bson.M, limit, skip int64) ([]store.Store, error) {
-	var ( f bson.M ; result []store.Store )
-	data, err := bson.Marshal(filter)
-	if err != nil {
-		return nil, err
-	}
+func (r Repo) Find(query string, categories []string, fields bson.M, limit, skip int64) ([]store.Store, error) {
+	var ( f = make(bson.M) ; result []store.Store )
 	if query != "" {
 		f = bson.M{ "$text": bson.M{ "$search": query } }
 	}
-	if err = bson.Unmarshal(data, &f) ; err != nil {
-		return nil, err
+	if len(categories) != 0 {
+		f["cat"] = object.H{
+			"$all": categories,
+		}
 	}
-	opt := options.Find()
-	opt.SetLimit(limit)
-	opt.SetSkip(skip)
+	opt := options.Find().SetLimit(limit).SetSkip(skip)
 	if fields != nil {
 		opt = opt.SetProjection(fields)
 	}
-	cursor, err := s.stores.Find(s.db.ctx, f, opt)
+	cursor, err := r.stores.Find(r.db.Ctx, f, opt)
 	if err != nil {
 		return nil, err
 	}
-	defer cursor.Close(s.db.ctx)
-	for cursor.Next(s.db.ctx) {
+	defer cursor.Close(r.db.Ctx)
+	for cursor.Next(r.db.Ctx) {
 		var record store.Store
 		if err := cursor.Decode(&record) ; err != nil {
 			return nil, err
@@ -91,7 +89,7 @@ func (s StoreRepo) Find(query string, filter store.Store, fields bson.M, limit, 
 }
 
 // UpdateOne update a store repository on database
-func (s StoreRepo) UpdateOne(store store.Store) error {
+func (r Repo) UpdateOne(store store.Store) error {
 	var update bson.D
 	t := time.Now()
 	store.UpdatedAt = &t
@@ -102,8 +100,8 @@ func (s StoreRepo) UpdateOne(store store.Store) error {
 	if err := bson.Unmarshal(data, &update) ; err != nil {
 		return err
 	}
-	_, err = s.stores.UpdateOne(
-		s.db.ctx,
+	_, err = r.stores.UpdateOne(
+		r.db.Ctx,
 		bson.M{ "_id": store.ID },
 		bson.M{ "$set": update },
 	)
@@ -111,34 +109,34 @@ func (s StoreRepo) UpdateOne(store store.Store) error {
 }
 
 // DeleteOne delete a store record from database
-func (s StoreRepo) DeleteOne(id primitive.ObjectID) error {
-	_, err := s.stores.DeleteOne(s.db.ctx, bson.M{ "_id": id })
+func (r Repo) DeleteOne(id primitive.ObjectID) error {
+	_, err := r.stores.DeleteOne(r.db.Ctx, bson.M{ "_id": id })
 	return err
 }
 
 // InsertComment add a comment to store record
-func (s StoreRepo) InsertComment(id primitive.ObjectID, comment store.Comment) error {
+func (r Repo) InsertComment(id primitive.ObjectID, comment store.Comment) (primitive.ObjectID, error) {
 	var update bson.M
 	comment.ID = primitive.NewObjectID()
 	t := time.Now()
 	comment.CreatedAt = &t
 	data, err := bson.Marshal(comment)
 	if err != nil {
-		return err
+		return primitive.ObjectID{}, err
 	}
 	if err = bson.Unmarshal(data, &update) ; err != nil {
-		return err
+		return primitive.ObjectID{}, err
 	}
-	_, err = s.stores.UpdateOne(
-		s.db.ctx,
+	_, err = r.stores.UpdateOne(
+		r.db.Ctx,
 		bson.M{ "_id": id },
 		bson.M{ "$push": bson.M{ "cmnt": update } },
 	)
-	return err
+	return comment.ID, err
 }
 
 // FindComments find a list of comments from store record
-func (s StoreRepo) FindComments(storeID primitive.ObjectID, limit, skip int64) ([]store.Comment, error) {
+func (r Repo) FindComments(storeID primitive.ObjectID, limit, skip int64) ([]store.Comment, error) {
 	var result store.Store
 	opt := options.FindOne().SetProjection(bson.M{
 		"cmnt": bson.M{
@@ -147,7 +145,7 @@ func (s StoreRepo) FindComments(storeID primitive.ObjectID, limit, skip int64) (
 	}).SetProjection(bson.M{
 		"cmnt": true,
 	})
-	err := s.stores.FindOne(s.db.ctx, bson.M{
+	err := r.stores.FindOne(r.db.Ctx, bson.M{
 		"_id": storeID,
 	}, opt).Decode(&result)
 	log.Println(result)
@@ -155,8 +153,8 @@ func (s StoreRepo) FindComments(storeID primitive.ObjectID, limit, skip int64) (
 }
 
 // DeleteComment remove a comment by ID from store record
-func (s StoreRepo) DeleteComment(storeID, commentID primitive.ObjectID) error {
-	_, err := s.stores.UpdateOne(s.db.ctx, bson.M{ "_id": storeID }, bson.M{
+func (r Repo) DeleteComment(storeID, commentID primitive.ObjectID) error {
+	_, err := r.stores.UpdateOne(r.db.Ctx, bson.M{ "_id": storeID }, bson.M{
 		"$pull": bson.M{
 			"cmnt": bson.M{ "_id": commentID },
 		},

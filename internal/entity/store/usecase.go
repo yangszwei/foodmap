@@ -6,10 +6,10 @@ import "foodmap/internal/infra/object"
 type IStoreUsecase interface {
 	CreateOne(document object.H) (string, error)
 	FindOneByID(id string, fields string) (object.H, error)
-	Find(query string, filter object.H, fields string, limit, skip int) ([]object.H, error)
+	Find(query, categories, fields string, limit, skip int64) ([]object.H, error)
 	UpdateOne(document object.H) error
 	DeleteOne(id string) error
-	CreateComment(storeID string, comment object.H) error
-	FindComments(storeID string, limit, skip int) ([]object.H, error)
+	CreateComment(storeID string, comment object.H) (string, error)
+	FindComments(storeID string, admin bool, limit, skip int64) ([]object.H, error)
 	DeleteComment(storeID, commentID string) error
 }

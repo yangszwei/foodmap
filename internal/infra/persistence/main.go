@@ -10,25 +10,25 @@ import (
 
 // Open connect to database and return a DB instance
 func Open(cfg config.DBConfig) (db DB, err error) {
-	db.ctx = context.Background()
+	db.Ctx = context.Background()
 	opt := options.Client().ApplyURI(cfg.ToURI())
-	db.client, err = mongo.Connect(db.ctx, opt)
+	db.Client, err = mongo.Connect(db.Ctx, opt)
 	if err != nil {
 		return
 	}
-	db.db = db.client.Database(cfg.Name, nil)
+	db.DB = db.Client.Database(cfg.Name, nil)
 	return
 }
 
 // DB wraps mongo client so the rest of the app don't need to know the
 // implementation details
 type DB struct {
-	client *mongo.Client
-	db     *mongo.Database
-	ctx    context.Context
+	Client *mongo.Client
+	DB     *mongo.Database
+	Ctx    context.Context
 }
 
 // Close disconnect from database
 func (db *DB) Close() error {
-	return db.client.Disconnect(db.ctx)
+	return db.Client.Disconnect(db.Ctx)
 }

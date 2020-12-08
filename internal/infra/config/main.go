@@ -15,12 +15,14 @@ func Open(path string) (cfg Config, err error) {
 	}
 	ser, _ := json.Marshal(raw)
 	_ = json.Unmarshal(ser, &cfg.DB)
+	_ = json.Unmarshal(ser, &cfg.Server)
 	return
 }
 
 // Config configuration
 type Config struct {
-	DB DBConfig
+	DB     DBConfig
+	Server ServerConfig
 }
 
 // Validate validate configuration

@@ -1,7 +1,9 @@
-package persistence_test
+package store_test
 
 import (
 	"foodmap/internal/entity/store"
+	"foodmap/internal/infra/config"
+	infra "foodmap/internal/infra/entity/store"
 	"foodmap/internal/infra/persistence"
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/bson/primitive"
@@ -45,15 +47,19 @@ var (
 	}
 	testStoreID primitive.ObjectID
 	testStoreCommentID primitive.ObjectID
-	testStoreRepo *persistence.StoreRepo
+	testStoreRepo *infra.Repo
 )
 
 func TestNewStoreRepo(t *testing.T) {
-	db, err := Open()
+	cfg, err := config.Open("../../../../.env")
 	if err != nil {
-		t.Fatal(err)
+		log.Fatalln(err)
 	}
-	testStoreRepo, err = persistence.NewStoreRepo(&db)
+	db, err := persistence.Open(cfg.DB)
+	if err != nil {
+		log.Fatalln(err)
+	}
+	testStoreRepo, err = infra.NewRepo(&db)
 	if err != nil {
 		log.Fatalln(err)
 	}
@@ -90,7 +96,7 @@ func TestStoreRepo_Find(t *testing.T) {
 			"store food product",
 		}
 		for _, q := range query {
-			s, err := testStoreRepo.Find(q, store.Store{}, nil, 0, 0)
+			s, err := testStoreRepo.Find(q, nil, nil, 0, 0)
 			if err != nil || len(s) < 1 || s[0].Name != testStore.Name {
 				t.Error(err)
 			}
@@ -112,7 +118,7 @@ func TestStoreRepo_UpdateOne(t *testing.T) {
 
 func TestStoreRepo_InsertComment(t *testing.T) {
 	t.Run("should succeed", func(t *testing.T) {
-		err := testStoreRepo.InsertComment(testStoreID, store.Comment{
+		_, err := testStoreRepo.InsertComment(testStoreID, store.Comment{
 			UserID:    primitive.NewObjectID(),
 			Stars:     4,
 			Message:   "test comment",

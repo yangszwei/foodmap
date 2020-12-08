@@ -16,8 +16,8 @@ func NewServer(data string) *Server {
 type Server struct {
 	Engine *gin.Engine
 	root   *gin.RouterGroup // for middlewares
-	web    *gin.RouterGroup // front-end web
-	api    *gin.RouterGroup // api
+	Web    *gin.RouterGroup // front-end web
+	API    *gin.RouterGroup // api
 	data   string           // folder path for storing data files
 }
 
@@ -25,7 +25,8 @@ type Server struct {
 // are set on server.root so that the middlewares are applied to all route
 // groups
 func (s *Server) SetupRouterGroups() {
-	s.api = s.root.Group("/api")
+	s.Web = s.root.Group("/")
+	s.API = s.root.Group("/api")
 }
 
 // Run start server
