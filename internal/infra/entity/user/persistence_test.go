@@ -60,11 +60,7 @@ func TestUserRepo_FindOneByID(t *testing.T) {
 func TestUserRepo_Find(t *testing.T) {
 	t.Run("should succeed", func(t *testing.T) {
 		query := []string{
-			"store",
-			"food",
-			"Product",
-			"Main",
-			"store food product",
+			"user",
 		}
 		for _, q := range query {
 			s, err := testUserRepo.Find(q, nil, nil, 0, 0)
