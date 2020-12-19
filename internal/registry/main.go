@@ -20,7 +20,7 @@ func Start(configPath string) error {
 	if err != nil {
 		log.Fatalln(err)
 	}
-	if err := config.Validate(cfg, *v) ; err != nil {
+	if err := config.Validate(cfg, *v); err != nil {
 		log.Fatal(err.Error())
 	}
 	db, err := persistence.Open(cfg.DB)

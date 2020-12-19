@@ -7,21 +7,21 @@ import (
 
 // Error create error response for API requests
 func Error(err error) gin.H {
-	if e, ok := err.(errors.Error) ; ok {
+	if e, ok := err.(errors.Error); ok {
 		return gin.H{
-			"code": e.Name,
+			"code":    e.Name,
 			"message": e.Message,
 		}
 	}
-	if e, ok := err.(errors.ValidationError) ; ok {
+	if e, ok := err.(errors.ValidationError); ok {
 		return gin.H{
-			"code": "invalid query",
+			"code":   "invalid query",
 			"fields": e.Field,
-			"type": e.Tag,
+			"type":   e.Tag,
 		}
 	}
 	return gin.H{
-		"code": "native",
+		"code":  "native",
 		"error": err.Error(),
 	}
 }

@@ -21,8 +21,8 @@ type Store struct {
 
 // Price levels
 const (
-	PriceCheap = 'c'
-	PriceMedium = 'm'
+	PriceCheap     = 'c'
+	PriceMedium    = 'm'
 	PriceExpensive = 'e'
-	PriceUnknown = 0
+	PriceUnknown   = 0
 )
