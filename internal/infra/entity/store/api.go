@@ -305,7 +305,7 @@ func postAPIComments(u store.IStoreUsecase) gin.HandlerFunc {
 // deleteAPIComment remove a comment from store
 // this endpoint require administrator privilege
 //
-// DELETE /api/stores
+// DELETE /api/stores/:store_id/comments/:comment_id
 //
 // success response:
 //   {
