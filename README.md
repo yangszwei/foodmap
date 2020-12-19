@@ -1,10 +1,10 @@
 ## Foodmap
-> 🍜 A map that shows the stores and restaurants around TAIVS.
+> 🍜 A map that shows the stores and restaurants around TAIVS and NCKU(?).
 
 ## Project setup
 
 ```shell
-make build
+make
 ```
 
 ```shell
