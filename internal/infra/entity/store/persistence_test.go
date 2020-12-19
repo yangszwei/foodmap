@@ -15,8 +15,8 @@ import (
 
 var (
 	testStore = store.Store{
-		Name:          "Test Store",
-		Description:   "$set:{\"test\": 1}",
+		Name:        "Test Store",
+		Description: "$set:{\"test\": 1}",
 		BusinessHours: []store.BusinessHoursRule{
 			{
 				FromDay:  time.Monday,
@@ -25,29 +25,29 @@ var (
 				ToTime:   "22:00",
 			},
 		},
-		Categories:    []string{ "food" },
-		PriceLevel:    store.PriceCheap,
-		Menu:          []store.Product{
+		Categories: []string{"food"},
+		PriceLevel: store.PriceCheap,
+		Menu: []store.Product{
 			{
 				Name:        "Test Product",
 				Description: "Test description",
 				Category:    "Main",
-				Variants:    []store.Variant{
+				Variants: []store.Variant{
 					{
 						Name:  "大",
 						Price: 50,
 					},
 					{
-						Name: "小",
+						Name:  "小",
 						Price: 40,
 					},
 				},
 			},
 		},
 	}
-	testStoreID primitive.ObjectID
+	testStoreID        primitive.ObjectID
 	testStoreCommentID primitive.ObjectID
-	testStoreRepo *infra.Repo
+	testStoreRepo      *infra.Repo
 )
 
 func TestNewStoreRepo(t *testing.T) {
@@ -75,7 +75,7 @@ func TestStoreRepo_InsertOne(t *testing.T) {
 
 func TestStoreRepo_FindOneByID(t *testing.T) {
 	t.Run("should succeed", func(t *testing.T) {
-		s, err := testStoreRepo.FindOneByID(testStoreID, bson.M{ "name": 1 })
+		s, err := testStoreRepo.FindOneByID(testStoreID, bson.M{"name": 1})
 		if err != nil {
 			t.Error(err)
 		}
@@ -107,7 +107,7 @@ func TestStoreRepo_Find(t *testing.T) {
 func TestStoreRepo_UpdateOne(t *testing.T) {
 	t.Run("should succeed", func(t *testing.T) {
 		err := testStoreRepo.UpdateOne(store.Store{
-			ID: testStoreID,
+			ID:          testStoreID,
 			Description: "updated description",
 		})
 		if err != nil {

@@ -3,11 +3,10 @@ package store
 import (
 	"foodmap/internal/entity/store"
 	"foodmap/internal/infra/delivery"
-	"foodmap/internal/infra/errors"
 	"foodmap/internal/infra/object"
-	"github.com/gin-gonic/gin"
 	"net/http"
-	"strconv"
+
+	"github.com/gin-gonic/gin"
 )
 
 // SetupAPI add api routes to server
@@ -47,7 +46,7 @@ func SetupAPI(s *delivery.Server, u store.IStoreUsecase) {
 //
 func getAPIStores(u store.IStoreUsecase) gin.HandlerFunc {
 	return func(c *gin.Context) {
-		l, s, err := parseLimitAndSkip(c.Query("limit"), c.Query("skip"))
+		l, s, err := delivery.ParseLimitAndSkip(c.Query("limit"), c.Query("skip"))
 		if err != nil {
 			c.JSON(http.StatusBadRequest, delivery.Error(err))
 		}
@@ -104,7 +103,7 @@ func getAPIStores(u store.IStoreUsecase) gin.HandlerFunc {
 func postAPIStores(u store.IStoreUsecase) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		data := make(object.H)
-		if err := c.ShouldBindJSON(&data) ; err != nil {
+		if err := c.ShouldBindJSON(&data); err != nil {
 			c.JSON(http.StatusBadRequest, delivery.Error(err))
 			return
 		}
@@ -113,7 +112,7 @@ func postAPIStores(u store.IStoreUsecase) gin.HandlerFunc {
 			c.JSON(http.StatusBadRequest, delivery.Error(err))
 			return
 		}
-		c.JSON(http.StatusOK, gin.H{ "id": id })
+		c.JSON(http.StatusOK, gin.H{"id": id})
 	}
 }
 
@@ -183,16 +182,16 @@ func getAPIStore(u store.IStoreUsecase) gin.HandlerFunc {
 func putAPIStore(u store.IStoreUsecase) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		data := make(object.H)
-		if err := c.ShouldBindJSON(&data) ; err != nil {
+		if err := c.ShouldBindJSON(&data); err != nil {
 			c.JSON(http.StatusBadRequest, delivery.Error(err))
 			return
 		}
 		data["id"] = c.Param("id")
-		if err := u.UpdateOne(data) ; err != nil {
+		if err := u.UpdateOne(data); err != nil {
 			c.JSON(http.StatusBadRequest, delivery.Error(err))
 			return
 		}
-		c.JSON(http.StatusOK, gin.H{ "id": c.Param("id") })
+		c.JSON(http.StatusOK, gin.H{"id": c.Param("id")})
 	}
 }
 
@@ -250,7 +249,7 @@ func deleteAPIStore(u store.IStoreUsecase) gin.HandlerFunc {
 //
 func getAPIComments(u store.IStoreUsecase) gin.HandlerFunc {
 	return func(c *gin.Context) {
-		l, s, err := parseLimitAndSkip(c.Query("limit"), c.Query("skip"))
+		l, s, err := delivery.ParseLimitAndSkip(c.Query("limit"), c.Query("skip"))
 		if err != nil {
 			c.JSON(http.StatusBadRequest, delivery.Error(err))
 			return
@@ -287,7 +286,7 @@ func getAPIComments(u store.IStoreUsecase) gin.HandlerFunc {
 func postAPIComments(u store.IStoreUsecase) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		data := make(object.H)
-		if err := c.ShouldBindJSON(&data) ; err != nil {
+		if err := c.ShouldBindJSON(&data); err != nil {
 			c.JSON(http.StatusBadRequest, delivery.Error(err))
 			return
 		}
@@ -323,29 +322,4 @@ func deleteAPIComment(u store.IStoreUsecase) gin.HandlerFunc {
 			"deleted_id": c.Param("cid"),
 		})
 	}
-}
-
-// parseLimitAndSkip used in requests with array response
-func parseLimitAndSkip(limit, skip string) (int64, int64, error) {
-	var (
-		l, s int64
-		err error
-	)
-	if limit == "" {
-		l = 0
-	} else {
-		l, err = strconv.ParseInt(limit, 10, 64)
-	}
-	if err != nil {
-		return 0, 0, errors.NewValidationError("invalid", "limit")
-	}
-	if skip == "" {
-		l = 0
-	} else {
-		s, err = strconv.ParseInt(skip, 10, 64)
-	}
-	if err != nil {
-		return 0, 0, errors.NewValidationError("invalid", "skip")
-	}
-	return l, s, nil
 }

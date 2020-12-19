@@ -3,17 +3,28 @@ package store
 import (
 	"encoding/json"
 	"foodmap/internal/entity/store"
+	"foodmap/internal/infra/delivery"
 	"foodmap/internal/infra/errors"
 	"foodmap/internal/infra/object"
 	"foodmap/internal/infra/validator"
-	"go.mongodb.org/mongo-driver/bson"
-	"go.mongodb.org/mongo-driver/bson/primitive"
 	"math"
 	"net"
 	"reflect"
 	"strings"
 	"time"
+
+	"go.mongodb.org/mongo-driver/bson"
+	"go.mongodb.org/mongo-driver/bson/primitive"
 )
+
+// validTags provide a string contained all valid tags
+func validTags() (tags []string) {
+	tags = []string{
+		"id", "name", "description", "is_open", "business_hours", "categories",
+		"price_level", "menu", "average_stars", "updated_at", "created_at",
+	}
+	return
+}
 
 // NewUsecase setup and return an instance of Usecase
 func NewUsecase(r store.IStoreRepo, v *validator.Validator) *Usecase {
@@ -39,7 +50,7 @@ func (u Usecase) CreateOne(document object.H) (string, error) {
 	if err != nil {
 		return "", err
 	}
-	if err := u.v.Validate(record) ; err != nil {
+	if err := u.v.Validate(record); err != nil {
 		return "", err
 	}
 	id, err := u.r.InsertOne(record)
@@ -57,7 +68,7 @@ func (u Usecase) FindOneByID(id string, fields string) (object.H, error) {
 	if err != nil {
 		return nil, err
 	}
-	if list := isFieldsValid(fields) ; list != nil {
+	if list := validator.IsFieldsValid(validTags(), fields); list != nil {
 		return nil, errors.New("invalid fields", strings.Join(list, ","))
 	}
 	record, err := u.r.FindOneByID(storeID, toProjection(fields))
@@ -70,10 +81,10 @@ func (u Usecase) FindOneByID(id string, fields string) (object.H, error) {
 // Find find a list of store records from repository, fields should be a
 // comma-separated list of available fields (refer to store.Store's json tag)
 func (u Usecase) Find(query, categories, fields string, limit, skip int64) ([]object.H, error) {
-	if f := isFieldsValid(fields) ; f != nil {
-		return []object.H{{ "fields": f }}, errors.New("invalid fields")
+	if f := validator.IsFieldsValid(validTags(), fields); f != nil {
+		return []object.H{{"fields": f}}, errors.New("invalid fields")
 	}
-	records, err := u.r.Find(query, split(categories), toProjection(fields), limit, skip)
+	records, err := u.r.Find(query, delivery.Split(categories), toProjection(fields), limit, skip)
 	if err != nil {
 		return nil, err
 	}
@@ -95,15 +106,15 @@ func (u Usecase) UpdateOne(document object.H) error {
 	if err != nil {
 		return errors.NewValidationError("id", "invalid")
 	}
-	if update, err = toStoreEntity(document) ; err != nil {
+	if update, err = toStoreEntity(document); err != nil {
 		return err
 	}
-	if compare, err = u.r.FindOneByID(storeID, nil) ; err != nil {
+	if compare, err = u.r.FindOneByID(storeID, nil); err != nil {
 		return err
 	}
 	m, _ := json.Marshal(document)
 	_ = json.Unmarshal(m, &compare)
-	if err := u.v.Validate(compare) ; err != nil {
+	if err := u.v.Validate(compare); err != nil {
 		return err
 	}
 	return u.r.UpdateOne(update)
@@ -124,7 +135,7 @@ func (u Usecase) CreateComment(storeID string, comment object.H) (string, error)
 	if err != nil {
 		return "", err
 	}
-	if d, ok := comment["ip_addr"].(string) ; ok {
+	if d, ok := comment["ip_addr"].(string); ok {
 		comment["ip_addr"] = net.ParseIP(d)
 	}
 	record, err := toStoreCommentEntity(comment)
@@ -133,10 +144,10 @@ func (u Usecase) CreateComment(storeID string, comment object.H) (string, error)
 	}
 	t := time.Now()
 	record.CreatedAt = &t
-	if err := u.v.Validate(record) ; err != nil {
+	if err := u.v.Validate(record); err != nil {
 		return "", err
 	}
-	if id, err = u.r.InsertComment(id, record) ; err != nil {
+	if id, err = u.r.InsertComment(id, record); err != nil {
 		return "", err
 	}
 	return id.Hex(), err
@@ -157,10 +168,10 @@ func (u Usecase) FindComments(storeID string, admin bool, limit, skip int64) ([]
 		doc := toStoreCommentDocument(record)
 		doc["id"] = record.ID.Hex()
 		doc["user_id"] = record.UserID.Hex()
-		if _, exist := doc["ip_addr"] ; exist && !admin {
+		if _, exist := doc["ip_addr"]; exist && !admin {
 			delete(doc, "ip_addr")
 		}
-		if _, exist := doc["user_agent"] ; exist && !admin {
+		if _, exist := doc["user_agent"]; exist && !admin {
 			delete(doc, "user_agent")
 		}
 		result = append(result, doc)
@@ -220,14 +231,14 @@ func toStoreCommentDocument(record store.Comment) object.H {
 }
 
 func processStoreDocumentInput(doc object.H) (object.H, error) {
-	if d, exist := doc["business_hours"].([]interface{}) ; exist {
+	if d, exist := doc["business_hours"].([]interface{}); exist {
 		bh, err := processStoreBusinessHoursInput(d)
 		if err != nil {
 			return nil, err
 		}
 		doc["business_hours"] = bh
 	}
-	if d, exist := doc["price_level"] ; exist {
+	if d, exist := doc["price_level"]; exist {
 		pl, err := processStorePriceLevelInput(d)
 		if err != nil {
 			return nil, err
@@ -241,22 +252,25 @@ func processStoreBusinessHoursInput(bhs []interface{}) ([]object.H, error) {
 	var result []object.H
 	for _, bh := range bhs {
 		doc := bh.(map[string]interface{})
-		var ( day, time []interface{} ; ok bool )
-		if day, ok = doc["day"].([]interface{}) ; !ok || len(day) != 2 {
+		var (
+			day, time []interface{}
+			ok        bool
+		)
+		if day, ok = doc["day"].([]interface{}); !ok || len(day) != 2 {
 			return nil, errors.NewValidationError("business_hours.day", "invalid")
 		}
-		if time, ok = doc["time"].([]interface{}) ; !ok || len(time) != 2 {
+		if time, ok = doc["time"].([]interface{}); !ok || len(time) != 2 {
 			return nil, errors.NewValidationError("business_hours.time", "invalid")
 		}
 		obj := object.H{
-			"from_day": day[0],
-			"to_day": day[1],
+			"from_day":  day[0],
+			"to_day":    day[1],
 			"from_time": time[0],
-			"to_time": time[1],
+			"to_time":   time[1],
 		}
 		data, _ := json.Marshal(obj)
 		var record store.BusinessHoursRule
-		if err := json.Unmarshal(data, &record) ; err != nil ||
+		if err := json.Unmarshal(data, &record); err != nil ||
 			record.FromDay == 0 || record.ToDay == 0 || record.FromTime == "" || record.ToTime == "" {
 			return nil, errors.NewValidationError("business_hours", "invalid")
 		}
@@ -284,10 +298,10 @@ func processStorePriceLevelInput(pl interface{}) (rune, error) {
 
 func processStoreDocumentOutput(record store.Store) object.H {
 	doc := toStoreDocument(record)
-	if _, exist := doc["id"] ; exist {
+	if _, exist := doc["id"]; exist {
 		doc["id"] = record.ID
 	}
-	if _, exist := doc["business_hours"] ; exist {
+	if _, exist := doc["business_hours"]; exist {
 		doc["business_hours"] = processStoreBusinessHoursOutput(record.BusinessHours)
 	}
 	return toStoreDocument(record)
@@ -298,50 +312,23 @@ func processStoreBusinessHoursOutput(bhs []store.BusinessHoursRule) [7][][2]stri
 	for _, bh := range bhs {
 		min := math.Min(float64(bh.FromDay), float64(bh.ToDay))
 		max := math.Max(float64(bh.FromDay), float64(bh.ToDay))
-		for i := int(min) ; i <= int(max) ; i++ {
-			result[i - 1] = append(result[i - 1], [2]string{ bh.FromTime, bh.ToTime })
+		for i := int(min); i <= int(max); i++ {
+			result[i-1] = append(result[i-1], [2]string{bh.FromTime, bh.ToTime})
 		}
 	}
 	return result
 }
 
-// isFieldsValid returns a list of unrecognized fields
-func isFieldsValid(fields string) (result []string) {
-	tags := split(fields)
-	if len(tags) == 0 {
-		return nil
-	}
-	validTags := []string{
-		"id", "name", "description", "is_open", "business_hours", "categories",
-		"price_level", "menu", "average_stars", "updated_at", "created_at",
-	}
-	for _, tag := range tags {
-		var exist bool
-		if !exist {
-			for _, t := range validTags {
-				if tag == t {
-					exist = true
-					break
-				}
-			}
-		}
-		if !exist {
-			result = append(result, tag)
-		}
-	}
-	return
-}
-
 // toProjection convert fields query to projection document
 func toProjection(fields string) bson.M {
 	var result = make(bson.M)
-	tags := split(fields)
+	tags := delivery.Split(fields)
 	if len(tags) == 0 {
 		// do not request comments by default
-		return bson.M{ "cmnt": false }
+		return bson.M{"cmnt": false}
 	}
 	rt := reflect.TypeOf(store.Store{})
-	for i := 0 ; i < rt.NumField() ; i++ {
+	for i := 0; i < rt.NumField(); i++ {
 		f := rt.Field(i)
 		for _, tag := range tags {
 			if tag == strings.Split(f.Tag.Get("json"), ",")[0] {
@@ -350,14 +337,4 @@ func toProjection(fields string) bson.M {
 		}
 	}
 	return result
-}
-
-// split split string by comma and remove empty ones
-func split(str string) (result []string) {
-	for _, i := range strings.Split(str, ",") {
-		if i != "" {
-			result = append(result, i)
-		}
-	}
-	return
 }
