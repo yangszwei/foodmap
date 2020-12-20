@@ -4,7 +4,7 @@
     <v-card-text>
       <v-row align="center" class="mx-0 my-0">
         <v-rating
-          :value="rating"
+          :value="Math.round(rating)"
           color="amber"
           dense
           background-color="grey lighten-1"
