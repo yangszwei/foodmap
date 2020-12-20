@@ -21,10 +21,10 @@
           class="mx-1"
           small
           draggable
-          v-for="categorie in categories"
-          :key="categorie"
+          v-for="category in categories"
+          :key="category"
         >
-          {{ categorie }}
+          {{ category }}
         </v-chip>
       </div>
 
