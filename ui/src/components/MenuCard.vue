@@ -47,7 +47,7 @@ export default {
         : _.reverse(
             _.sortedUniqBy(
               _.values(_.mapValues(__item.variants, "price")),
-              parseInt
+              parseFloat
             )
           );
     },
