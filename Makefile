@@ -1,5 +1,5 @@
 all: fmt test
-	go build -o "foodmap" "./cmd/foodmap/main.go"
+	go build "./cmd/foodmap"
 
 fmt:
 	go fmt ./...
