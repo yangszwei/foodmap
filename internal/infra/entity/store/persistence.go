@@ -17,15 +17,14 @@ func NewRepo(db *persistence.DB) (*Repo, error) {
 	s := new(Repo)
 	s.db = db
 	s.stores = db.DB.Collection("stores")
-	index := mongo.IndexModel{ Keys:
-		bson.D{
-			bson.E{ Key: "name", Value: "text" },
-			bson.E{ Key: "desc", Value: "text" },
-			bson.E{ Key: "cat", Value: "text" },
-			bson.E{ Key: "menu.name", Value: "text" },
-			bson.E{ Key: "menu.desc", Value: "text" },
-			bson.E{ Key: "menu.cat", Value: "text" },
-		},
+	index := mongo.IndexModel{Keys: bson.D{
+		bson.E{Key: "name", Value: "text"},
+		bson.E{Key: "desc", Value: "text"},
+		bson.E{Key: "cat", Value: "text"},
+		bson.E{Key: "menu.name", Value: "text"},
+		bson.E{Key: "menu.desc", Value: "text"},
+		bson.E{Key: "menu.cat", Value: "text"},
+	},
 	}
 	_, err := s.stores.Indexes().CreateOne(s.db.Ctx, index)
 	return s, err
@@ -33,7 +32,7 @@ func NewRepo(db *persistence.DB) (*Repo, error) {
 
 // Repo implement store.IStoreRepo
 type Repo struct {
-	db *persistence.DB
+	db     *persistence.DB
 	stores *mongo.Collection
 }
 
@@ -54,15 +53,18 @@ func (r Repo) FindOneByID(id primitive.ObjectID, fields bson.M) (store.Store, er
 	if fields != nil {
 		opt = opt.SetProjection(fields)
 	}
-	err := r.stores.FindOne(r.db.Ctx, bson.M{ "_id": id }, opt).Decode(&result)
+	err := r.stores.FindOne(r.db.Ctx, bson.M{"_id": id}, opt).Decode(&result)
 	return result, err
 }
 
 // Find find a list of store records from database
 func (r Repo) Find(query string, categories []string, fields bson.M, limit, skip int64) ([]store.Store, error) {
-	var ( f = make(bson.M) ; result []store.Store )
+	var (
+		f      = make(bson.M)
+		result []store.Store
+	)
 	if query != "" {
-		f = bson.M{ "$text": bson.M{ "$search": query } }
+		f = bson.M{"$text": bson.M{"$search": query}}
 	}
 	if len(categories) != 0 {
 		f["cat"] = object.H{
@@ -80,7 +82,7 @@ func (r Repo) Find(query string, categories []string, fields bson.M, limit, skip
 	defer cursor.Close(r.db.Ctx)
 	for cursor.Next(r.db.Ctx) {
 		var record store.Store
-		if err := cursor.Decode(&record) ; err != nil {
+		if err := cursor.Decode(&record); err != nil {
 			return nil, err
 		}
 		result = append(result, record)
@@ -97,20 +99,20 @@ func (r Repo) UpdateOne(store store.Store) error {
 	if err != nil {
 		return err
 	}
-	if err := bson.Unmarshal(data, &update) ; err != nil {
+	if err := bson.Unmarshal(data, &update); err != nil {
 		return err
 	}
 	_, err = r.stores.UpdateOne(
 		r.db.Ctx,
-		bson.M{ "_id": store.ID },
-		bson.M{ "$set": update },
+		bson.M{"_id": store.ID},
+		bson.M{"$set": update},
 	)
 	return err
 }
 
 // DeleteOne delete a store record from database
 func (r Repo) DeleteOne(id primitive.ObjectID) error {
-	_, err := r.stores.DeleteOne(r.db.Ctx, bson.M{ "_id": id })
+	_, err := r.stores.DeleteOne(r.db.Ctx, bson.M{"_id": id})
 	return err
 }
 
@@ -124,13 +126,13 @@ func (r Repo) InsertComment(id primitive.ObjectID, comment store.Comment) (primi
 	if err != nil {
 		return primitive.ObjectID{}, err
 	}
-	if err = bson.Unmarshal(data, &update) ; err != nil {
+	if err = bson.Unmarshal(data, &update); err != nil {
 		return primitive.ObjectID{}, err
 	}
 	_, err = r.stores.UpdateOne(
 		r.db.Ctx,
-		bson.M{ "_id": id },
-		bson.M{ "$push": bson.M{ "cmnt": update } },
+		bson.M{"_id": id},
+		bson.M{"$push": bson.M{"cmnt": update}},
 	)
 	return comment.ID, err
 }
@@ -140,7 +142,7 @@ func (r Repo) FindComments(storeID primitive.ObjectID, limit, skip int64) ([]sto
 	var result store.Store
 	opt := options.FindOne().SetProjection(bson.M{
 		"cmnt": bson.M{
-			"$slice": []int64{ skip, limit },
+			"$slice": []int64{skip, limit},
 		},
 	}).SetProjection(bson.M{
 		"cmnt": true,
@@ -154,9 +156,9 @@ func (r Repo) FindComments(storeID primitive.ObjectID, limit, skip int64) ([]sto
 
 // DeleteComment remove a comment by ID from store record
 func (r Repo) DeleteComment(storeID, commentID primitive.ObjectID) error {
-	_, err := r.stores.UpdateOne(r.db.Ctx, bson.M{ "_id": storeID }, bson.M{
+	_, err := r.stores.UpdateOne(r.db.Ctx, bson.M{"_id": storeID}, bson.M{
 		"$pull": bson.M{
-			"cmnt": bson.M{ "_id": commentID },
+			"cmnt": bson.M{"_id": commentID},
 		},
 	})
 	return err

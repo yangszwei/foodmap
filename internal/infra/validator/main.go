@@ -2,9 +2,11 @@
 package validator
 
 import (
+	"foodmap/internal/infra/delivery"
 	"foodmap/internal/infra/errors"
-	govalidator "github.com/go-playground/validator/v10"
 	"regexp"
+
+	govalidator "github.com/go-playground/validator/v10"
 )
 
 // New create a Validator
@@ -35,4 +37,27 @@ func (v *Validator) Validate(i interface{}) error {
 		return errs
 	}
 	return nil
+}
+
+// IsFieldsValid returns a list of unrecognized fields
+func IsFieldsValid(validTags []string, fields string) (result []string) {
+	tags := delivery.Split(fields)
+	if len(tags) == 0 {
+		return nil
+	}
+	for _, tag := range tags {
+		var exist bool
+		if !exist {
+			for _, t := range validTags {
+				if tag == t {
+					exist = true
+					break
+				}
+			}
+		}
+		if !exist {
+			result = append(result, tag)
+		}
+	}
+	return
 }

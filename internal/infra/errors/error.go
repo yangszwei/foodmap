@@ -7,7 +7,7 @@ import (
 
 // Error object
 type Error struct {
-	Name   string
+	Name    string
 	Message string
 }
 

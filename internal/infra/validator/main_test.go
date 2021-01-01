@@ -35,3 +35,21 @@ func TestValidator_Validate(t *testing.T) {
 		}
 	})
 }
+
+func TestIsFieldsValid(t *testing.T) {
+	validTags := []string{
+		"ABC", "abc", "'''", "###",
+	}
+	t.Run("should succeed", func(t *testing.T) {
+		err := len(validator.IsFieldsValid(validTags, "abc")) == 0
+		if err != true {
+			t.Error(err)
+		}
+	})
+	t.Run("should fail", func(t *testing.T) {
+		err := len(validator.IsFieldsValid(validTags, "aBc")) == 0
+		if err == true {
+			t.Error(err)
+		}
+	})
+}
